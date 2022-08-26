@@ -23,8 +23,8 @@ export interface IPersonVm {
   persons: IPerson[];
   personDetail: IPerson;
 }
-const initialPerson = { id: 0, name: '' };
-const initialPersonVm = {
+export const initialPerson = { id: 0, name: '' };
+export const initialPersonVm = {
   persons: [
     { id: 1, name: 'Max' },
     { id: 2, name: 'Manu' },
@@ -41,36 +41,55 @@ const initialPersonVm = {
 export class PeopleComponent implements OnInit {
   // this subject will be used to pass the person object
   // when selecting a person from the list
-  // <div class="personrow" *ngFor="let person of vm.persons" (click)="personDetailSubj.next(person)"> ... </div>
-  public personDetailSubj = new Subject<IPerson>();
   public vm$!: Observable<IPersonVm>;
 
   /***  add example ***/
-  public addSubj = new BehaviorSubject<IPerson>(initialPerson);
+  public addState = new BehaviorSubject<IPerson>(initialPerson);
+  // <div class="personrow" *ngFor="let person of vm.persons" (click)="personDetailSubj.next(person)"> ... </div>
+  public detailState = new BehaviorSubject<IPerson>(initialPerson);
   /*** delete example ***/
-  public deleteSubj = new BehaviorSubject<IPerson>(initialPerson);
+  public deleteState = new BehaviorSubject<IPerson>(initialPerson);
   /*** update example ***/
-  public updateSubj = new BehaviorSubject<IPerson>(initialPerson);
+  public updateState = new BehaviorSubject<IPerson>(initialPerson);
   /*** persist on server example ***/
-  public persistSubj = new BehaviorSubject<IPerson>(initialPerson);
-  constructor(
-    private personService: PersonService,
-    private svc: DataService,
-    private route: ActivatedRoute
-  ) {
-    // retrieving list of persons (could be a http request)
-    const personList$ = this.personService
+  public persistState = new BehaviorSubject<IPerson>(initialPerson);
+  constructor(private svc: PersonService, private route: ActivatedRoute) {
+    //////////////////// Server
+    // retrieving list from server
+    const listChange = this.svc
       .getPersons()
       .pipe(map((persons) => (vm: IPersonVm) => ({ ...vm, persons })));
+    // persist to server
+    const persistChange = this.persistState.pipe(
+      mergeMap((personToUpdate) => this.svc.updatePerson(personToUpdate)),
+      map((updatedPerson) => (vm: IPersonVm) => {
+        const foundIndex = vm.persons.findIndex(
+          (p) => p.id === updatedPerson.id
+        );
+        const persons = [
+          ...vm.persons.slice(0, foundIndex),
+          updatedPerson,
+          ...vm.persons.slice(foundIndex + 1),
+        ];
+        return { ...vm, persons };
+      })
+    );
+    // retrieve from server
+    const retrieveChange = route.paramMap.pipe(
+      map((paramMap) => Number(paramMap.get('id'))),
+      switchMap((id) => this.svc.getPerson(id)),
+      map((personDetail) => (vm: IPersonVm) => ({ ...vm, personDetail }))
+    );
 
+    //////////////////// local list once loaded from server
     // select a person, get detail and set it on viewmodel
-    const personDetail$ = this.personDetailSubj.pipe(
-      mergeMap((person) => this.personService.getPersonDetail(person.id)),
+    const detailChange = this.detailState.pipe(
+      mergeMap((person) => this.svc.getPersonDetail(person.id)),
       map((personDetail) => (vm: IPersonVm) => ({ ...vm, personDetail }))
     );
 
     // add list action
-    const addPerson$ = this.addSubj.pipe(
+    const addChange = this.addState.pipe(
       // spread operator is used on the existing persons list to add the new person
       map((newPerson) => (vm: IPersonVm) => ({
         ...vm,
@@ -78,14 +97,14 @@ export class PeopleComponent implements OnInit {
       }))
     );
     // delete list action
-    const deletePerson$ = this.deleteSubj.pipe(
+    const deleteChange = this.deleteState.pipe(
       map((personToDelete) => (vm: IPersonVm) => ({
         ...vm,
         persons: vm.persons.filter((p) => p !== personToDelete),
       }))
     );
     // update list action
-    const updatePerson$ = this.updateSubj.pipe(
+    const updateChange = this.updateState.pipe(
       map((personToUpdate) => (vm: IPersonVm) => {
         const indexOfPerson = vm.persons.findIndex((p) => p === personToUpdate);
         // spread operator to maintain immutability of the persons array
@@ -97,39 +116,15 @@ export class PeopleComponent implements OnInit {
         return { ...vm, persons };
       })
     );
-    // Server actions
-    // persist action
-    const persistPerson$ = this.persistSubj.pipe(
-      mergeMap((personToUpdate) =>
-        this.personService.updatePerson(personToUpdate)
-      ),
-      map((updatedPerson) => (vm: IPersonVm) => {
-        const foundPersonIndex = vm.persons.findIndex(
-          (p) => p.id === updatedPerson.id
-        );
-        const persons = [
-          ...vm.persons.slice(0, foundPersonIndex),
-          updatedPerson,
-          ...vm.persons.slice(foundPersonIndex + 1),
-        ];
-        return { ...vm, persons };
-      })
-    );
-    // retrieve from server
-    const retrievePerson$ = route.paramMap.pipe(
-      map((paramMap) => Number(paramMap.get('id'))),
-      switchMap((id) => this.personService.getPerson(id)),
-      map((personDetail) => (vm: IPersonVm) => ({ ...vm, personDetail }))
-    );
 
     (this.vm$ = merge(
-      personList$,
-      personDetail$,
-      addPerson$,
-      deletePerson$,
-      updatePerson$,
-      persistPerson$,
-      retrievePerson$
+      listChange,
+      detailChange,
+      addChange,
+      deleteChange,
+      updateChange,
+      persistChange,
+      retrieveChange
     ).pipe(
       scan(
         (vm: IPersonVm, mutationFn: (vm: IPersonVm) => IPersonVm) =>

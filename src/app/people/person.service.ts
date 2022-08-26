@@ -48,7 +48,7 @@ export class PersonService {
 
   getPersons(): Observable<IPerson[]> {
     return this.http.get<IPerson[]>('http://localhost:3000/people/').pipe(
-      
+
       catchError(this.handleError),
       tap( ps => console.log("service persons: " + JSON.stringify(ps)))
   )}
@@ -61,6 +61,9 @@ export class PersonService {
     return of({id:1, name:'Max'});
   }
   getPerson(id: number): Observable<IPerson> {
+    return of({id:1, name:'Max'});
+  }
+  deletePerson(id: number): Observable<IPerson>{
     return of({id:1, name:'Max'});
   }
   handleError(error: any): Observable<any> {
