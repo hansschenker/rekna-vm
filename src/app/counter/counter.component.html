@@ -1,0 +1,5 @@
+<p>counter works!</p>
+<button (click)="incrAction.next({count:1})">+</button>
+<button (click)="decrAction.next({count:1})">-</button>
+<div> {{ vmChanges | async | json}} </div>
+<router-outlet></router-outlet>

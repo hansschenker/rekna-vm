@@ -1,0 +1,15 @@
+<p>people works!</p>
+<div *ngIf="vm$ | async as vm">
+  <!-- {{ vm.persons }} -->
+  {{ vm.personDetail | json }}
+  <ul *ngFor="let person of vm.persons">
+    <li>
+      {{ person.name }}
+    </li>
+  </ul>
+</div>
+<div>
+
+  <!-- <pre>{{ vm$ | async | json }}</pre> -->
+</div>
+<router-outlet></router-outlet>

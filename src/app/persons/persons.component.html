@@ -1,0 +1,11 @@
+<p>persons works!</p>
+
+<h2>Persons</h2>
+
+  <button (click)="addState.next({ persons:vm.getValue().persons, person:{id:1, name:'Hans'}})">Add Person</button>
+  <button (click)="deleteState.next({ persons:vm.getValue().persons, person:{id:1, name:'Hans'}})">Delete Person</button>
+
+<div> {{ vmChanges | async | json}} </div>
+<h2>vm</h2>
+<div> {{ vm.getValue().persons | json }} </div>
+<router-outlet></router-outlet>
